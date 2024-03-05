@@ -1,0 +1,31 @@
+{
+  "name": "ideade/typed-collections",
+  "license": ["MIT"],
+  "type": "library",
+  "version": "1.0.0",
+  "authors": [
+    {
+      "name": "Anton Shutov",
+      "email": "me@ashutov.rocks",
+      "homepage": "https://ashutov.rocks"
+    }
+  ],
+  "scripts": {
+    "test": "vendor/bin/phpunit tests --display-warnings --display-errors"
+  },
+  "require": {
+    "php": ">=8.0"
+  },
+  "require-dev": {
+    "vimeo/psalm": "^5.22.2",
+    "phpunit/phpunit": "^3.7"
+  },
+  "autoload": {
+    "classmap": [
+      "src/"
+    ],
+    "psr-4": {
+      "Ideade\\TypedCollections\\": "src"
+    }
+  }
+}
