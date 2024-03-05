@@ -17,8 +17,7 @@
     "php": ">=8.0"
   },
   "require-dev": {
-    "vimeo/psalm": "^5.22.2",
-    "phpunit/phpunit": "^3.7"
+    "vimeo/psalm": "^5.22.2"
   },
   "autoload": {
     "classmap": [
