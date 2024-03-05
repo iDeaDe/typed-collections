@@ -44,7 +44,7 @@ class UserCollection extends TypedCollection
 
 // SomeRepository.php
 
-use 
+...
 
 class UserRepository
 {
