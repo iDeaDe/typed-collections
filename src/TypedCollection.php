@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Ideade\TypedCollections;
 
@@ -8,40 +10,42 @@ use InvalidArgumentException;
 use Iterator;
 use JsonSerializable;
 
+use function array_values;
+use function count;
+use function get_class;
+use function get_object_vars;
+use function gettype;
+use function is_object;
+use function is_scalar;
+use function reset;
+use function sprintf;
+
 /**
- * @template K of array-key
- * @template V of mixed
+ * @template V
  *
  * @template-implements Iterator<V>
- * @template-implements ArrayAccess<K, V>
+ * @template-implements ArrayAccess<array-key, V>
  */
 abstract class TypedCollection implements Iterator, ArrayAccess, Countable, JsonSerializable
 {
     /**
-     * @var array<int, K>
-     */
-    private array $keys = [];
-    /**
-     * @var array<K, V>
+     * @var array<array-key, V>
      */
     private array $items = [];
-    /**
-     * @psalm-suppress PropertyNotSetInConstructor The property is initialized by the rewind() method
-     */
-    private int $pointer;
 
     /**
-     * @return 'boolean'|'integer'|'double'|'string'|class-string
+     * @psalm-return 'boolean'|'integer'|'double'|'string'|class-string<V>
      */
     abstract protected function valueType(): string;
 
     /**
-     * @param array<K, V> $items
+     * @param array<array-key, V> $items
      */
     public function __construct(array $items = [])
     {
-        $this->rewind();
-        $this->setItems($items);
+        if (count($items) > 0) {
+            $this->setItems($items);
+        }
     }
 
     /**
@@ -49,34 +53,34 @@ abstract class TypedCollection implements Iterator, ArrayAccess, Countable, Json
      */
     public function current(): mixed
     {
-        return $this->items[$this->keys[$this->pointer]];
+        return $this->items[key($this->items)];
     }
 
     public function next(): void
     {
-        ++$this->pointer;
+        next($this->items);
     }
 
     /**
-     * @return K
+     * @return array-key|null
      */
-    public function key(): mixed
+    public function key(): int|string|null
     {
-        return $this->keys[$this->pointer];
+        return key($this->items);
     }
 
     public function valid(): bool
     {
-        return isset($this->keys[$this->pointer], $this->items[$this->keys[$this->pointer]]);
+        return key($this->items) !== null;
     }
 
     public function rewind(): void
     {
-        $this->pointer = 0;
+        reset($this->items);
     }
 
     /**
-     * @param K $offset
+     * @param array-key $offset
      */
     public function offsetExists(mixed $offset): bool
     {
@@ -84,7 +88,7 @@ abstract class TypedCollection implements Iterator, ArrayAccess, Countable, Json
     }
 
     /**
-     * @param K $offset
+     * @param array-key $offset
      * @return ?V
      */
     public function offsetGet(mixed $offset): mixed
@@ -93,43 +97,26 @@ abstract class TypedCollection implements Iterator, ArrayAccess, Countable, Json
     }
 
     /**
-     * @param K $offset
+     * @param array-key|null $offset
      * @param V $value
      *
      * @throws InvalidArgumentException
      */
     public function offsetSet(mixed $offset, mixed $value): void
     {
-        $this->testValueType($value);
-        $currentOffset        = $this->keys[$this->pointer] ?? null;
-        $this->items[$offset] = $value;
-        $this->fillKeys();
-
-        if (!is_null($currentOffset)) {
-            $this->refreshKeyPointer($currentOffset);
+        if ($offset === null) {
+            $this->add($value);
+        } else {
+            $this->addByKey($offset, $value);
         }
     }
 
+    /**
+     * @param array-key $offset
+     */
     public function offsetUnset(mixed $offset): void
     {
-        if (!isset($this->items[$offset])) {
-            return;
-        }
-
         unset($this->items[$offset]);
-
-        $key = $this->keys[$this->pointer];
-
-        if ($key === $offset) {
-            if ($this->pointer === array_key_last($this->keys)) {
-                $this->rewind();
-            } else {
-                $this->next();
-            }
-        } else {
-            $this->fillKeys();
-            $this->refreshKeyPointer($key);
-        }
     }
 
     public function count(): int
@@ -143,45 +130,45 @@ abstract class TypedCollection implements Iterator, ArrayAccess, Countable, Json
             return [];
         }
 
-        $serialized = [];
+        if (is_scalar(array_values($this->items)[0])) {
+            return $this->items;
+        }
 
+        $result = [];
+
+        /** @var object $item */
         foreach ($this->items as $item) {
             if ($item instanceof JsonSerializable) {
-                /**
-                 * We can't know what an object will serialize into,
-                 * since it can be literally any object with any logic
-                 *
-                 * @psalm-suppress MixedAssignment
-                 */
-                $serialized[] = $item->jsonSerialize();
+                /** @var array $itemResult */
+                $itemResult = $item->jsonSerialize();
+
+                $result[] = $itemResult;
             } else {
-                $serialized[] = $item;
+                $result[] = get_object_vars($item);
             }
         }
 
-        return $serialized;
+        return $result;
     }
 
     /**
-     * @param K $key
+     * @param array-key $key
      * @return ?V
      */
-    public function get(mixed $key): mixed
+    public function get(int|string $key): mixed
     {
-        if ($this->offsetExists($key)) {
-            return $this->offsetGet($key);
-        }
-
-        return null;
+        return $this->offsetGet($key);
     }
 
     /**
-     * @param K $key
+     * @param array-key $key
      * @param V $value
      */
-    public function addByKey(mixed $key, mixed $value): self
+    public function addByKey(int|string $key, mixed $value): self
     {
-        $this->offsetSet($key, $value);
+        $this->testValueType($value);
+        $this->items[$key] = $value;
+
         return $this;
     }
 
@@ -191,52 +178,34 @@ abstract class TypedCollection implements Iterator, ArrayAccess, Countable, Json
     public function add(mixed $item): self
     {
         $this->testValueType($item);
-        /**
-         * @psalm-suppress InvalidPropertyAssignmentValue The method is not supposed to write to the array by key
-         */
         $this->items[] = $item;
-        $this->fillKeys();
+
         return $this;
     }
 
     /**
-     * @param K $key
+     * @param array-key $key
      */
-    public function remove(mixed $key): self
+    public function remove(int|string $key): self
     {
         $this->offsetUnset($key);
+
         return $this;
     }
 
     /**
-     * @param array<K, V> $items
+     * @param array<array-key, V> $items
      */
     public function setItems(array $items): self
     {
-        $this->items = [];
-
-        foreach ($items as $key => $value) {
-            $this->addByKey($key, $value);
+        // TODO: add item index to exception
+        foreach ($items as $item) {
+            $this->testValueType($item);
         }
+
+        $this->items = $items;
 
         return $this;
-    }
-
-    private function fillKeys(): void
-    {
-        $this->keys = array_keys($this->items);
-    }
-
-    /**
-     * @param K $key
-     */
-    private function refreshKeyPointer(mixed $key): void
-    {
-        if (($pointer = array_search($key, $this->keys, true)) !== false) {
-            $this->pointer = $pointer;
-        } else {
-            $this->rewind();
-        }
     }
 
     /**
@@ -256,21 +225,9 @@ abstract class TypedCollection implements Iterator, ArrayAccess, Countable, Json
                 sprintf(
                     'Expected value of type "%s", got "%s"',
                     $collectionType,
-                    $this->getDisplayableValueType($item)
+                    is_object($item) ? get_class($item) : gettype($item)
                 )
             );
         }
-    }
-
-    /**
-     * @param V $value
-     */
-    private function getDisplayableValueType(mixed $value): string
-    {
-        if (is_object($value)) {
-            return get_class($value);
-        }
-
-        return gettype($value);
     }
 }
