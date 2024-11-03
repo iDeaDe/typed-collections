@@ -1,14 +1,13 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Ideade\TypedCollections\ScalarCollections;
-
 
 use Ideade\TypedCollections\TypedCollection;
 
 /**
- * @template K of array-key
- *
- * @template-extends TypedCollection<K, float>
+ * @template-extends TypedCollection<float>
  */
 final class FloatCollection extends TypedCollection
 {

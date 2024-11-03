@@ -16,7 +16,9 @@
     "php": ">=8.0"
   },
   "require-dev": {
-    "vimeo/psalm": "^5.22.2"
+    "friendsofphp/php-cs-fixer": "^3.60",
+    "vimeo/psalm": "^5.26",
+    "phpunit/phpunit": "^10"
   },
   "autoload": {
     "classmap": [
@@ -25,5 +27,13 @@
     "psr-4": {
       "Ideade\\TypedCollections\\": "src"
     }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Ideade\\TypedCollections\\Tests\\": "tests"
+    }
+  },
+  "config": {
+    "sort-packages": true
   }
 }
