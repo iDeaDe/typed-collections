@@ -1,5 +1,3 @@
-[![Mutation testing badge](https://img.shields.io/endpoint?style=flat&url=https%3A%2F%2Fbadge-api.stryker-mutator.io%2Ftyped-collections)](https://dashboard.stryker-mutator.io/reports/typed-collections)
-
 # Typed collections
 
 PHP collections with runtime type checking
@@ -13,65 +11,38 @@ PHP collections with runtime type checking
 - Any of your classes :white_check_mark:
 - resource(including closed), array :x:
 
-### Example:
+### Usage
+
+1. Define your collection class, or use one of scalar(from Ideade\TypedCollections\ScalarCollections):
 ```php
-
-// User.php
-
-...
-
-final readonly class User
-{   
-    public function __construct(
-        public string $id,
-        public string $login,
-        public string $email
-    ) {}
-}
-
-// UserCollection.php
-
-...
-
 use Ideade\TypedCollections\TypedCollection;
 
-class UserCollection extends TypedCollection
+final class ExampleCollection extends TypedCollection
 {
-    protected function valueType() {
-        return User::class;
-    }
-}
-
-// SomeRepository.php
-
-...
-
-class UserRepository
-{
-    ...
-
-    public function findAllUsers(): UserCollection
+    protected function valueType() : string
     {
-        $users = new UserCollection();
-        
-        // Getting data from some source
-        $sourceUsers = [];
-        
-        foreach ($sourceUsers as $sourceUser) {
-            $users
-                ->add(
-                    new User(
-                        $sourceUser['id'],
-                        $sourceUser['login'],
-                        $sourceUser['email']
-                    )
-                )
-        }
-
-        return $users;
+        return Example::class;
     }
-
-    ...
 }
+```
+2. Use it as a normal array, or use the following methods:
+```php
+
+$collection = new ExampleCollection();
+
+// Add an element
+$collection->add(new Example());
+
+// Get item by key
+$collection->get(0);
+
+// Add an element by key
+$collection->addByKey(0, new Example());
+
+// Delete element by key
+$collection->remove(0);
+
+// Set collection items (check the type of each item)
+$collection->setItems([new Example(), new Example(), new Example()]);
 
 ```
